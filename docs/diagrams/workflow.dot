@@ -1,0 +1,100 @@
+digraph workflow {
+    rankdir=TB;
+    bgcolor=white;
+    pad=0.3;
+    nodesep=0.32;
+    ranksep=0.45;
+    splines=spline;
+    compound=true;
+    fontname="Helvetica";
+
+    node [shape=box, style="filled,rounded", fontname="Helvetica", fontsize=17,
+          margin="0.18,0.10", color="#37474F", fontcolor="#212121",
+          fillcolor="#ECEFF1", penwidth=1.3];
+    edge [color="#455A64", fontname="Helvetica", fontsize=16, arrowsize=0.75,
+          penwidth=1.2, fontcolor="#1A237E"];
+
+    Start     [shape=ellipse, label="User Input",
+               fillcolor="#CFD8DC", color="#37474F"];
+
+    // Defense layers — teal family
+    L1        [shape=diamond, label="Rate\nLimiter",
+               fillcolor="#B2DFDB", color="#00695C", fontcolor="#004D40"];
+    L2        [label="Session\nMemory",
+               fillcolor="#B2DFDB", color="#00695C", fontcolor="#004D40"];
+    L3        [shape=diamond, label="Rule-Based\nValidator",
+               fillcolor="#B2DFDB", color="#00695C", fontcolor="#004D40"];
+    RAG       [label="RAG\nRetriever",
+               fillcolor="#B2DFDB", color="#00695C", fontcolor="#004D40"];
+    L4        [shape=diamond, label="Semantic\nValidator",
+               fillcolor="#B2DFDB", color="#00695C", fontcolor="#004D40"];
+
+    // Routing decisions — blue family
+    Extract   [shape=diamond, label="Commands\nextracted?",
+               fillcolor="#BBDEFB", color="#1565C0", fontcolor="#0D47A1"];
+    WL        [shape=diamond, label="Whitelisted?",
+               fillcolor="#BBDEFB", color="#1565C0", fontcolor="#0D47A1"];
+
+    // Violations — red family
+    Block429  [label=<<B>VIOLATION</B><BR/><FONT POINT-SIZE="10">rate_limit</FONT>>,
+               fillcolor="#FFCDD2", color="#C62828", fontcolor="#B71C1C"];
+    BlockRule [label=<<B>VIOLATION</B><BR/><FONT POINT-SIZE="10">rule-based</FONT>>,
+               fillcolor="#FFCDD2", color="#C62828", fontcolor="#B71C1C"];
+    BlockSem  [label=<<B>VIOLATION</B><BR/><FONT POINT-SIZE="10">semantic</FONT>>,
+               fillcolor="#FFCDD2", color="#C62828", fontcolor="#B71C1C"];
+    BlockForb [label=<<B>VIOLATION</B><BR/><FONT POINT-SIZE="10">forbidden_command</FONT>>,
+               fillcolor="#FFCDD2", color="#C62828", fontcolor="#B71C1C"];
+
+    // Action nodes — green family
+    Exec      [label="Execute\n(execFile)",
+               fillcolor="#C5E1A5", color="#558B2F", fontcolor="#33691E"];
+    Chat      [label="Chat\n(Ollama)",
+               fillcolor="#C5E1A5", color="#558B2F", fontcolor="#33691E"];
+    Filter    [label="Output\nFilter",
+               fillcolor="#C5E1A5", color="#558B2F", fontcolor="#33691E"];
+
+    UserOut   [shape=ellipse, label="User Output",
+               fillcolor="#CFD8DC", color="#37474F"];
+
+    subgraph cluster_persist {
+        label="Persistence";
+        style="rounded,filled";
+        fillcolor="#F3E5F5";
+        color="#6A1B9A";
+        fontname="Helvetica";
+        fontsize=12;
+        fontcolor="#4A148C";
+        Log [shape=note,   label="Audit\nLog",
+             fillcolor="#E1BEE7", color="#6A1B9A", fontcolor="#4A148C"];
+        LTM [shape=folder, label="Long-Term\nMemory",
+             fillcolor="#D1C4E9", color="#4527A0", fontcolor="#311B92"];
+    }
+
+    Start    -> L1;
+    L1       -> Block429  [label="blocked",   color="#C62828", fontcolor="#B71C1C"];
+    L1       -> L2        [label="pass",      color="#2E7D32", fontcolor="#1B5E20"];
+    L2       -> L3;
+    L3       -> BlockRule [label="violation", color="#C62828", fontcolor="#B71C1C"];
+    L3       -> RAG       [label="safe",      color="#2E7D32", fontcolor="#1B5E20"];
+    RAG      -> L4;
+    L4       -> BlockSem  [label="unsafe",    color="#C62828", fontcolor="#B71C1C"];
+    L4       -> Extract   [label="safe",      color="#2E7D32", fontcolor="#1B5E20"];
+    Extract  -> WL        [label="yes"];
+    Extract  -> Chat      [label="no"];
+    WL       -> Exec      [label="yes",       color="#2E7D32", fontcolor="#1B5E20"];
+    WL       -> BlockForb [label="no",        color="#C62828", fontcolor="#B71C1C"];
+    Exec     -> Filter;
+    Chat     -> Filter;
+    Filter   -> UserOut;
+
+    Block429  -> Log [style=dashed, lhead=cluster_persist];
+    BlockRule -> Log [style=dashed, lhead=cluster_persist];
+    BlockSem  -> Log [style=dashed, lhead=cluster_persist];
+    BlockForb -> Log [style=dashed, lhead=cluster_persist];
+
+    { rank=same; L1; Block429; }
+    { rank=same; L3; BlockRule; }
+    { rank=same; L4; BlockSem; }
+    { rank=same; Extract; Chat; }
+    { rank=same; WL; BlockForb; }
+}

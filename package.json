@@ -1,0 +1,38 @@
+{
+  "name": "llm-prompt-injection-ext",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "jest --verbose",
+    "test:watch": "jest --watch",
+    "seed": "node scripts/seedChromaDB.js",
+    "chromadb:start": "docker compose up -d chromadb",
+    "chromadb:stop": "docker compose down",
+    "hack": "node src/hackerCli.js",
+    "dataset:build": "node scripts/buildDataset.js",
+    "dataset:build:fast": "node scripts/buildDataset.js --fast",
+    "eval:ablation": "node scripts/runAblation.js",
+    "eval:ablation:fast": "node scripts/runAblation.js --fast",
+    "eval:models": "node scripts/runModelComparison.js",
+    "eval:models:fast": "node scripts/runModelComparison.js --fast",
+    "eval:report": "node scripts/generateReport.js",
+    "eval:all:fast": "npm run dataset:build:fast && npm run eval:ablation:fast && npm run eval:models:fast && npm run eval:report",
+    "eval:models:qwen": "node scripts/runModelComparison.js --output data/result2 --models qwen3.5:2b,qwen3.5:4b,qwen3.5:9b",
+    "eval:report:qwen": "node scripts/generateReport.js --input-dir data/result2",
+    "eval:figures:qwen": "cd findings && venv/bin/python generate_figures.py --data-dir ../data/result2 --output-dir findings2"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "GPL-3.0-or-later",
+  "description": "Security validation system for a command-execution chatbot with dual-agent architecture",
+  "dependencies": {
+    "@chroma-core/default-embed": "^0.1.9",
+    "chromadb": "^3.3.0",
+    "dotenv": "^17.2.4",
+    "ollama": "^0.6.3"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
+  }
+}

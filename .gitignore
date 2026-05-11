@@ -1,0 +1,10 @@
+node_modules/
+logs/
+.env
+*.log
+package-lock.json
+*.pptx
+*.png
+*.mmd
+*.md
+
