@@ -1,9 +1,6 @@
 /**
  * generateReport.js — Metrics Aggregator & Results Reporter
  *
- * Processes raw results from the ablation and/or model-comparison runs,
- * computes standard metrics, and generates both machine-readable (JSON)
- * and human-readable (Markdown) reports.
  *
  * Usage:
  *   npm run eval:report                           (reads data/results/)
@@ -15,13 +12,10 @@
  *                       report.json / report.md will be written
  *                       (default: data/results)
  *
- * Note: ablation-raw.json is optional. If absent, ablation sections are
- * omitted. model-comparison-raw.json is also optional (silently skipped).
- * At least one of the two must be present.
  */
 
-const path = require('path');
-const fs = require('fs');
+const path = require("path");
+const fs = require("fs");
 
 // ─── CLI arg parsing ──────────────────────────────────────────────────────────
 
@@ -31,21 +25,26 @@ function getArg(name, defaultValue) {
   return idx !== -1 && args[idx + 1] ? args[idx + 1] : defaultValue;
 }
 
-const RESULTS_DIR     = path.resolve(path.join(__dirname, '..', getArg('--input-dir', 'data/results')));
-const ABLATION_PATH   = path.join(RESULTS_DIR, 'ablation-raw.json');
-const MODEL_PATH      = path.join(RESULTS_DIR, 'model-comparison-raw.json');
-const REPORT_JSON_PATH = path.join(RESULTS_DIR, 'report.json');
-const REPORT_MD_PATH  = path.join(RESULTS_DIR, 'report.md');
+const RESULTS_DIR = path.resolve(
+  path.join(__dirname, "..", getArg("--input-dir", "data/results")),
+);
+const ABLATION_PATH = path.join(RESULTS_DIR, "ablation-raw.json");
+const MODEL_PATH = path.join(RESULTS_DIR, "model-comparison-raw.json");
+const REPORT_JSON_PATH = path.join(RESULTS_DIR, "report.json");
+const REPORT_MD_PATH = path.join(RESULTS_DIR, "report.md");
 
 // ─── Metric Computation ─────────────────────────────────────────────────────
 
 function computeConfusionMatrix(results) {
-  let tp = 0, fp = 0, fn = 0, tn = 0;
+  let tp = 0,
+    fp = 0,
+    fn = 0,
+    tn = 0;
   for (const r of results) {
-    if (r.predictedLabel === 'UNSAFE' && r.actualLabel === 'UNSAFE') tp++;
-    else if (r.predictedLabel === 'UNSAFE' && r.actualLabel === 'SAFE') fp++;
-    else if (r.predictedLabel === 'SAFE' && r.actualLabel === 'UNSAFE') fn++;
-    else if (r.predictedLabel === 'SAFE' && r.actualLabel === 'SAFE') tn++;
+    if (r.predictedLabel === "UNSAFE" && r.actualLabel === "UNSAFE") tp++;
+    else if (r.predictedLabel === "UNSAFE" && r.actualLabel === "SAFE") fp++;
+    else if (r.predictedLabel === "SAFE" && r.actualLabel === "UNSAFE") fn++;
+    else if (r.predictedLabel === "SAFE" && r.actualLabel === "SAFE") tn++;
   }
   return { tp, fp, fn, tn };
 }
@@ -54,10 +53,13 @@ function computeMetrics(cm) {
   const { tp, fp, fn, tn } = cm;
   const total = tp + fp + fn + tn;
   const accuracy = total > 0 ? (tp + tn) / total : 0;
-  const precision = (tp + fp) > 0 ? tp / (tp + fp) : 0;
-  const recall = (tp + fn) > 0 ? tp / (tp + fn) : 0;
-  const f1 = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 0;
-  const fpr = (fp + tn) > 0 ? fp / (fp + tn) : 0;
+  const precision = tp + fp > 0 ? tp / (tp + fp) : 0;
+  const recall = tp + fn > 0 ? tp / (tp + fn) : 0;
+  const f1 =
+    precision + recall > 0
+      ? (2 * precision * recall) / (precision + recall)
+      : 0;
+  const fpr = fp + tn > 0 ? fp / (fp + tn) : 0;
   return { accuracy, precision, recall, f1, fpr, total };
 }
 
@@ -71,7 +73,9 @@ function computeLatencyStats(results) {
   return { avg: +avg.toFixed(1), p50, p95, p99 };
 }
 
-function pct(n) { return (n * 100).toFixed(1) + '%'; }
+function pct(n) {
+  return (n * 100).toFixed(1) + "%";
+}
 
 // ─── Ablation Analysis ──────────────────────────────────────────────────────
 
@@ -92,7 +96,11 @@ function analyzeAblation(data) {
       if (catResults.length === 0) continue;
       const catCm = computeConfusionMatrix(catResults);
       const catMetrics = computeMetrics(catCm);
-      perCategory[cat] = { confusionMatrix: catCm, ...catMetrics, count: catResults.length };
+      perCategory[cat] = {
+        confusionMatrix: catCm,
+        ...catMetrics,
+        count: catResults.length,
+      };
     }
 
     perConfig[config] = {
@@ -140,7 +148,11 @@ function analyzeModels(data) {
       if (catResults.length === 0) continue;
       const catCm = computeConfusionMatrix(catResults);
       const catMetrics = computeMetrics(catCm);
-      perCategory[cat] = { confusionMatrix: catCm, ...catMetrics, count: catResults.length };
+      perCategory[cat] = {
+        confusionMatrix: catCm,
+        ...catMetrics,
+        count: catResults.length,
+      };
     }
 
     perModel[model] = {
@@ -162,7 +174,10 @@ function analyzeFalsePositives(data, groupKey) {
 
   for (const group of groups) {
     const fps = data.filter(
-      (r) => r[groupKey] === group && r.predictedLabel === 'UNSAFE' && r.actualLabel === 'SAFE'
+      (r) =>
+        r[groupKey] === group &&
+        r.predictedLabel === "UNSAFE" &&
+        r.actualLabel === "SAFE",
     );
 
     const bySubcategory = {};
@@ -185,63 +200,74 @@ function analyzeFalsePositives(data, groupKey) {
 
 // ─── Markdown Report ────────────────────────────────────────────────────────
 
-function generateMarkdown(ablation, models, ablationFalsePositives, modelFalsePositives) {
+function generateMarkdown(
+  ablation,
+  models,
+  ablationFalsePositives,
+  modelFalsePositives,
+) {
   const lines = [];
-  const h = (level, text) => lines.push(`${'#'.repeat(level)} ${text}\n`);
+  const h = (level, text) => lines.push(`${"#".repeat(level)} ${text}\n`);
   const p = (text) => lines.push(`${text}\n`);
 
-  h(1, 'Evaluation Results Report');
+  h(1, "Evaluation Results Report");
   p(`Generated: ${new Date().toISOString()}`);
 
   if (ablation) {
     // ── Table 1: Ablation Confusion Matrices ──
-    h(2, 'Table 1: Ablation Confusion Matrices');
-    lines.push('| Configuration | TP | FP | FN | TN | Total |');
-    lines.push('|---|---|---|---|---|---|');
+    h(2, "Table 1: Ablation Confusion Matrices");
+    lines.push("| Configuration | TP | FP | FN | TN | Total |");
+    lines.push("|---|---|---|---|---|---|");
     for (const config of ablation.configs) {
       const c = ablation.perConfig[config].confusionMatrix;
-      lines.push(`| ${config} | ${c.tp} | ${c.fp} | ${c.fn} | ${c.tn} | ${c.tp + c.fp + c.fn + c.tn} |`);
+      lines.push(
+        `| ${config} | ${c.tp} | ${c.fp} | ${c.fn} | ${c.tn} | ${c.tp + c.fp + c.fn + c.tn} |`,
+      );
     }
-    lines.push('');
+    lines.push("");
 
     // ── Table 2: Per-Configuration Metrics ──
-    h(2, 'Table 2: Per-Configuration Precision / Recall / F1');
-    lines.push('| Configuration | Accuracy | Precision | Recall | F1 | FPR | Avg Latency | P95 Latency |');
-    lines.push('|---|---|---|---|---|---|---|---|');
+    h(2, "Table 2: Per-Configuration Precision / Recall / F1");
+    lines.push(
+      "| Configuration | Accuracy | Precision | Recall | F1 | FPR | Avg Latency | P95 Latency |",
+    );
+    lines.push("|---|---|---|---|---|---|---|---|");
     for (const config of ablation.configs) {
       const m = ablation.perConfig[config];
       lines.push(
-        `| ${config} | ${pct(m.accuracy)} | ${pct(m.precision)} | ${pct(m.recall)} | ${pct(m.f1)} | ${pct(m.fpr)} | ${m.latency.avg}ms | ${m.latency.p95}ms |`
+        `| ${config} | ${pct(m.accuracy)} | ${pct(m.precision)} | ${pct(m.recall)} | ${pct(m.f1)} | ${pct(m.fpr)} | ${m.latency.avg}ms | ${m.latency.p95}ms |`,
       );
     }
-    lines.push('');
+    lines.push("");
 
     // ── Table 3: Per-Category F1 Across Configurations ──
-    h(2, 'Table 3: Per-Category F1 Across Configurations');
-    const catHeader = ['Category', ...ablation.configs];
-    lines.push(`| ${catHeader.join(' | ')} |`);
-    lines.push(`|${catHeader.map(() => '---').join('|')}|`);
+    h(2, "Table 3: Per-Category F1 Across Configurations");
+    const catHeader = ["Category", ...ablation.configs];
+    lines.push(`| ${catHeader.join(" | ")} |`);
+    lines.push(`|${catHeader.map(() => "---").join("|")}|`);
     for (const cat of ablation.categories) {
       const row = [cat];
       for (const config of ablation.configs) {
         const catData = ablation.perConfig[config].perCategory[cat];
-        row.push(catData ? pct(catData.f1) : 'N/A');
+        row.push(catData ? pct(catData.f1) : "N/A");
       }
-      lines.push(`| ${row.join(' | ')} |`);
+      lines.push(`| ${row.join(" | ")} |`);
     }
-    lines.push('');
+    lines.push("");
 
     // ── Table 4: Layer Delta Analysis ──
-    h(2, 'Table 4: Layer Contribution (Delta Analysis)');
-    lines.push('| Added Layer(s) | Accuracy Delta | Precision Delta | Recall Delta | F1 Delta |');
-    lines.push('|---|---|---|---|---|');
+    h(2, "Table 4: Layer Contribution (Delta Analysis)");
+    lines.push(
+      "| Added Layer(s) | Accuracy Delta | Precision Delta | Recall Delta | F1 Delta |",
+    );
+    lines.push("|---|---|---|---|---|");
     for (const d of ablation.deltas) {
-      const sign = (n) => (n >= 0 ? '+' : '') + pct(n);
+      const sign = (n) => (n >= 0 ? "+" : "") + pct(n);
       lines.push(
-        `| ${d.from} → ${d.to} | ${sign(d.accuracyDelta)} | ${sign(d.precisionDelta)} | ${sign(d.recallDelta)} | ${sign(d.f1Delta)} |`
+        `| ${d.from} → ${d.to} | ${sign(d.accuracyDelta)} | ${sign(d.precisionDelta)} | ${sign(d.recallDelta)} | ${sign(d.f1Delta)} |`,
       );
     }
-    lines.push('');
+    lines.push("");
   }
 
   // ── Model Comparison Tables ──
@@ -250,145 +276,155 @@ function generateMarkdown(ablation, models, ablationFalsePositives, modelFalsePo
 
     // Model metrics summary
     h(2, `Table ${tNum}: Model Size vs. Accuracy vs. Latency`);
-    lines.push('| Model | Accuracy | Precision | Recall | F1 | FPR | Avg Latency | P95 Latency |');
-    lines.push('|---|---|---|---|---|---|---|---|');
+    lines.push(
+      "| Model | Accuracy | Precision | Recall | F1 | FPR | Avg Latency | P95 Latency |",
+    );
+    lines.push("|---|---|---|---|---|---|---|---|");
     for (const model of models.models) {
       const m = models.perModel[model];
       lines.push(
-        `| ${model} | ${pct(m.accuracy)} | ${pct(m.precision)} | ${pct(m.recall)} | ${pct(m.f1)} | ${pct(m.fpr)} | ${m.latency.avg}ms | ${m.latency.p95}ms |`
+        `| ${model} | ${pct(m.accuracy)} | ${pct(m.precision)} | ${pct(m.recall)} | ${pct(m.f1)} | ${pct(m.fpr)} | ${m.latency.avg}ms | ${m.latency.p95}ms |`,
       );
     }
-    lines.push('');
+    lines.push("");
     tNum++;
 
     // Model confusion matrices
     h(2, `Table ${tNum}: Per-Model Confusion Matrices`);
-    lines.push('| Model | TP | FP | FN | TN | Total |');
-    lines.push('|---|---|---|---|---|---|');
+    lines.push("| Model | TP | FP | FN | TN | Total |");
+    lines.push("|---|---|---|---|---|---|");
     for (const model of models.models) {
       const c = models.perModel[model].confusionMatrix;
-      lines.push(`| ${model} | ${c.tp} | ${c.fp} | ${c.fn} | ${c.tn} | ${c.tp + c.fp + c.fn + c.tn} |`);
+      lines.push(
+        `| ${model} | ${c.tp} | ${c.fp} | ${c.fn} | ${c.tn} | ${c.tp + c.fp + c.fn + c.tn} |`,
+      );
     }
-    lines.push('');
+    lines.push("");
     tNum++;
 
     // Per-category F1 across models
     h(2, `Table ${tNum}: Per-Category F1 Across Models`);
-    const mCatHeader = ['Category', ...models.models];
-    lines.push(`| ${mCatHeader.join(' | ')} |`);
-    lines.push(`|${mCatHeader.map(() => '---').join('|')}|`);
+    const mCatHeader = ["Category", ...models.models];
+    lines.push(`| ${mCatHeader.join(" | ")} |`);
+    lines.push(`|${mCatHeader.map(() => "---").join("|")}|`);
     for (const cat of models.categories) {
       const row = [cat];
       for (const model of models.models) {
         const catData = models.perModel[model].perCategory[cat];
-        row.push(catData ? pct(catData.f1) : 'N/A');
+        row.push(catData ? pct(catData.f1) : "N/A");
       }
-      lines.push(`| ${row.join(' | ')} |`);
+      lines.push(`| ${row.join(" | ")} |`);
     }
-    lines.push('');
+    lines.push("");
     tNum++;
 
     // Per-category accuracy across models
     h(2, `Table ${tNum}: Per-Category Accuracy Across Models`);
-    const mAccHeader = ['Category', ...models.models];
-    lines.push(`| ${mAccHeader.join(' | ')} |`);
-    lines.push(`|${mAccHeader.map(() => '---').join('|')}|`);
+    const mAccHeader = ["Category", ...models.models];
+    lines.push(`| ${mAccHeader.join(" | ")} |`);
+    lines.push(`|${mAccHeader.map(() => "---").join("|")}|`);
     for (const cat of models.categories) {
       const row = [cat];
       for (const model of models.models) {
         const catData = models.perModel[model].perCategory[cat];
-        row.push(catData ? pct(catData.accuracy) : 'N/A');
+        row.push(catData ? pct(catData.accuracy) : "N/A");
       }
-      lines.push(`| ${row.join(' | ')} |`);
+      lines.push(`| ${row.join(" | ")} |`);
     }
-    lines.push('');
+    lines.push("");
     tNum++;
 
     // Latency breakdown
     h(2, `Table ${tNum}: Latency Breakdown by Model`);
-    lines.push('| Model | Avg (ms) | P50 (ms) | P95 (ms) | P99 (ms) |');
-    lines.push('|---|---|---|---|---|');
+    lines.push("| Model | Avg (ms) | P50 (ms) | P95 (ms) | P99 (ms) |");
+    lines.push("|---|---|---|---|---|");
     for (const model of models.models) {
       const l = models.perModel[model].latency;
       lines.push(`| ${model} | ${l.avg} | ${l.p50} | ${l.p95} | ${l.p99} |`);
     }
-    lines.push('');
+    lines.push("");
     tNum++;
 
     // False positive analysis for models
     if (modelFalsePositives) {
       h(2, `Table ${tNum}: False Positive Analysis by Model`);
-      lines.push('| Model | Total FP | Top False Positive Sources |');
-      lines.push('|---|---|---|');
+      lines.push("| Model | Total FP | Top False Positive Sources |");
+      lines.push("|---|---|---|");
       for (const model of models.models) {
         const fp = modelFalsePositives[model];
         const topSources = Object.entries(fp.bySubcategory)
           .sort((a, b) => b[1].count - a[1].count)
           .slice(0, 3)
           .map(([key, v]) => `${key} (${v.count})`)
-          .join(', ');
-        lines.push(`| ${model} | ${fp.totalFP} | ${topSources || 'none'} |`);
+          .join(", ");
+        lines.push(`| ${model} | ${fp.totalFP} | ${topSources || "none"} |`);
       }
-      lines.push('');
+      lines.push("");
       tNum++;
     }
   }
 
   // ── Ablation False Positive Analysis ──
   if (ablation && ablationFalsePositives) {
-    h(2, 'Table 6: False Positive Analysis');
-    lines.push('| Configuration | Total FP | Top False Positive Sources |');
-    lines.push('|---|---|---|');
+    h(2, "Table 6: False Positive Analysis");
+    lines.push("| Configuration | Total FP | Top False Positive Sources |");
+    lines.push("|---|---|---|");
     for (const config of ablation.configs) {
       const fp = ablationFalsePositives[config];
       const topSources = Object.entries(fp.bySubcategory)
         .sort((a, b) => b[1].count - a[1].count)
         .slice(0, 3)
         .map(([key, v]) => `${key} (${v.count})`)
-        .join(', ');
-      lines.push(`| ${config} | ${fp.totalFP} | ${topSources || 'none'} |`);
+        .join(", ");
+      lines.push(`| ${config} | ${fp.totalFP} | ${topSources || "none"} |`);
     }
-    lines.push('');
+    lines.push("");
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 function main() {
-  console.log('\n  Metrics Aggregator & Report Generator');
-  console.log('  ─────────────────────────────────────');
+  console.log("\n  Metrics Aggregator & Report Generator");
+  console.log("  ─────────────────────────────────────");
   console.log(`  Input dir: ${path.relative(process.cwd(), RESULTS_DIR)}`);
 
   // Load ablation results (optional)
   let ablationData = null;
   if (fs.existsSync(ABLATION_PATH)) {
-    ablationData = JSON.parse(fs.readFileSync(ABLATION_PATH, 'utf-8'));
+    ablationData = JSON.parse(fs.readFileSync(ABLATION_PATH, "utf-8"));
     console.log(`  Ablation results: ${ablationData.length} entries`);
   } else {
-    console.log('  Ablation results: not found (skipping ablation sections)');
+    console.log("  Ablation results: not found (skipping ablation sections)");
   }
 
   // Load model comparison results (optional)
   let modelData = null;
   if (fs.existsSync(MODEL_PATH)) {
-    modelData = JSON.parse(fs.readFileSync(MODEL_PATH, 'utf-8'));
+    modelData = JSON.parse(fs.readFileSync(MODEL_PATH, "utf-8"));
     console.log(`  Model comparison results: ${modelData.length} entries`);
   } else {
-    console.log('  Model comparison results: not found (skipping)');
+    console.log("  Model comparison results: not found (skipping)");
   }
 
   if (!ablationData && !modelData) {
-    console.error('  No result files found. Run at least one evaluation first.');
+    console.error(
+      "  No result files found. Run at least one evaluation first.",
+    );
     process.exit(1);
   }
 
   // Analyze
   const ablation = ablationData ? analyzeAblation(ablationData) : null;
   const models = modelData ? analyzeModels(modelData) : null;
-  const ablationFalsePositives = ablationData ? analyzeFalsePositives(ablationData, 'config') : null;
-  const modelFalsePositives = modelData ? analyzeFalsePositives(modelData, 'model') : null;
+  const ablationFalsePositives = ablationData
+    ? analyzeFalsePositives(ablationData, "config")
+    : null;
+  const modelFalsePositives = modelData
+    ? analyzeFalsePositives(modelData, "model")
+    : null;
 
   // Ensure output directory exists
   if (!fs.existsSync(RESULTS_DIR)) {
@@ -406,31 +442,44 @@ function main() {
 
   // Write JSON report
   fs.writeFileSync(REPORT_JSON_PATH, JSON.stringify(report, null, 2));
-  console.log(`  JSON report: ${path.relative(process.cwd(), REPORT_JSON_PATH)}`);
+  console.log(
+    `  JSON report: ${path.relative(process.cwd(), REPORT_JSON_PATH)}`,
+  );
 
   // Write Markdown report
-  const markdown = generateMarkdown(ablation, models, ablationFalsePositives, modelFalsePositives);
+  const markdown = generateMarkdown(
+    ablation,
+    models,
+    ablationFalsePositives,
+    modelFalsePositives,
+  );
   fs.writeFileSync(REPORT_MD_PATH, markdown);
-  console.log(`  Markdown report: ${path.relative(process.cwd(), REPORT_MD_PATH)}`);
+  console.log(
+    `  Markdown report: ${path.relative(process.cwd(), REPORT_MD_PATH)}`,
+  );
 
   // Print quick summary
   if (ablation) {
-    console.log('\n  Quick Summary (Ablation):');
+    console.log("\n  Quick Summary (Ablation):");
     for (const config of ablation.configs) {
       const m = ablation.perConfig[config];
-      console.log(`    ${config.padEnd(35)} F1=${pct(m.f1).padEnd(7)} Acc=${pct(m.accuracy)}`);
+      console.log(
+        `    ${config.padEnd(35)} F1=${pct(m.f1).padEnd(7)} Acc=${pct(m.accuracy)}`,
+      );
     }
   }
 
   if (models) {
-    console.log('\n  Quick Summary (Model Comparison):');
+    console.log("\n  Quick Summary (Model Comparison):");
     for (const model of models.models) {
       const m = models.perModel[model];
-      console.log(`    ${model.padEnd(20)} F1=${pct(m.f1).padEnd(7)} Acc=${pct(m.accuracy).padEnd(7)} AvgLat=${m.latency.avg}ms`);
+      console.log(
+        `    ${model.padEnd(20)} F1=${pct(m.f1).padEnd(7)} Acc=${pct(m.accuracy).padEnd(7)} AvgLat=${m.latency.avg}ms`,
+      );
     }
   }
 
-  console.log('');
+  console.log("");
 }
 
 main();
