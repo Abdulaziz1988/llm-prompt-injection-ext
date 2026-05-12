@@ -1,3 +1,4 @@
+process.env.CHROMADB_ENABLED = "true";
 jest.mock("chromadb", () => {
   const mockCollection = { name: "security_patterns" };
   const mockClient = {
@@ -40,7 +41,7 @@ describe("chromaClient", () => {
 
   test("returns null on connection failure", async () => {
     __mockClient.getOrCreateCollection.mockRejectedValueOnce(
-      new Error("Connection refused")
+      new Error("Connection refused"),
     );
     const col = await getCollection();
     expect(col).toBeNull();

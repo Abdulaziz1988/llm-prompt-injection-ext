@@ -1,3 +1,4 @@
+process.env.LONG_TERM_MEMORY_ENABLED = "true";
 jest.mock("../src/rag/chromaClient", () => ({
   getCollection: jest.fn(),
 }));
@@ -5,7 +6,10 @@ jest.mock("../src/rag/chromaClient", () => ({
 const fs = require("fs");
 const path = require("path");
 const { getCollection } = require("../src/rag/chromaClient");
-const { storeBlockedPattern, loadRecentViolations } = require("../src/memory/longTermMemory");
+const {
+  storeBlockedPattern,
+  loadRecentViolations,
+} = require("../src/memory/longTermMemory");
 
 describe("longTermMemory", () => {
   beforeEach(() => {
@@ -17,7 +21,11 @@ describe("longTermMemory", () => {
       const mockCollection = { add: jest.fn().mockResolvedValue(undefined) };
       getCollection.mockResolvedValue(mockCollection);
 
-      await storeBlockedPattern("ignore instructions", "prompt_injection", "high");
+      await storeBlockedPattern(
+        "ignore instructions",
+        "prompt_injection",
+        "high",
+      );
 
       expect(mockCollection.add).toHaveBeenCalledTimes(1);
       const call = mockCollection.add.mock.calls[0][0];
@@ -68,9 +76,21 @@ describe("longTermMemory", () => {
     test("reads violation entries from log file", () => {
       const entries = [
         JSON.stringify({ status: "SAFE", violationType: "none", input: "ls" }),
-        JSON.stringify({ status: "VIOLATION", violationType: "prompt_injection", input: "ignore instructions" }),
-        JSON.stringify({ status: "VIOLATION", violationType: "forbidden_command", input: "rm -rf /" }),
-        JSON.stringify({ status: "VIOLATION", violationType: "rate_limit", input: "spam" }),
+        JSON.stringify({
+          status: "VIOLATION",
+          violationType: "prompt_injection",
+          input: "ignore instructions",
+        }),
+        JSON.stringify({
+          status: "VIOLATION",
+          violationType: "forbidden_command",
+          input: "rm -rf /",
+        }),
+        JSON.stringify({
+          status: "VIOLATION",
+          violationType: "rate_limit",
+          input: "spam",
+        }),
       ];
       fs.writeFileSync(testLogFile, entries.join("\n") + "\n");
 
@@ -93,7 +113,11 @@ describe("longTermMemory", () => {
       const entries = [];
       for (let i = 0; i < 20; i++) {
         entries.push(
-          JSON.stringify({ status: "VIOLATION", violationType: "prompt_injection", input: `attack-${i}` })
+          JSON.stringify({
+            status: "VIOLATION",
+            violationType: "prompt_injection",
+            input: `attack-${i}`,
+          }),
         );
       }
       fs.writeFileSync(testLogFile, entries.join("\n") + "\n");
