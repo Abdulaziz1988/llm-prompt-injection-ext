@@ -6,5 +6,4 @@ package-lock.json
 *.pptx
 *.png
 *.mmd
-*.md
 .DS_store
